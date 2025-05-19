@@ -971,6 +971,20 @@ class AlphaEngine(Engine):
         ordinary_guidelines: Sequence[GuidelineMatch],
         tool_enabled_guideline_matches: dict[GuidelineMatch, list[ToolId]],
     ) -> None:
+        filtered_ordinary = [
+            g
+            for g in ordinary_guidelines
+            if g.guideline.id not in session.agent_state["applied_guideline_ids"]
+            and not g.guideline.metadata.get("continuous", False)
+        ]
+        filtered_tool_enabled = {
+            g: tools
+            for g, tools in tool_enabled_guideline_matches.items()
+            if g.guideline.id not in session.agent_state["applied_guideline_ids"]
+            and not g.guideline.metadata.get(
+                "continuous", False
+            )  # guidelines with tools are probably not continuous but we check anyway
+        }
         applied_guideline_ids = [
             g.id
             for g in (
@@ -982,8 +996,8 @@ class AlphaEngine(Engine):
                     interaction_history=context.interaction.history,
                     terms=list(context.state.glossary_terms),
                     staged_events=context.state.tool_events,
-                    ordinary_guideline_matches=ordinary_guidelines,
-                    tool_enabled_guideline_matches=tool_enabled_guideline_matches,
+                    ordinary_guideline_matches=filtered_ordinary,
+                    tool_enabled_guideline_matches=filtered_tool_enabled,
                 )
             ).previously_applied_guidelines
         ]
@@ -991,7 +1005,11 @@ class AlphaEngine(Engine):
         await self._entity_commands.update_session(
             session_id=session.id,
             params=SessionUpdateParams(
-                agent_state=AgentState(applied_guideline_ids=applied_guideline_ids)
+                agent_state=AgentState(
+                    applied_guideline_ids=session.agent_state["applied_guideline_ids"].extend(
+                        applied_guideline_ids
+                    )
+                )
             ),
         )
 
