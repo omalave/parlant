@@ -73,6 +73,10 @@ from parlant.core.evaluations import (
     EvaluationStore,
 )
 from parlant.core.journeys import JourneyDocumentStore, JourneyStore
+from parlant.core.services.indexing.customer_dependent_action_detector import (
+    CustomerDependentActionDetector,
+    CustomerDependentActionSchema,
+)
 from parlant.core.services.indexing.guideline_action_proposer import (
     GuidelineActionProposer,
     GuidelineActionPropositionSchema,
@@ -335,6 +339,7 @@ async def container(
             GuidelineConnectionPropositionsSchema,
             GuidelineActionPropositionSchema,
             GuidelineContinuousPropositionSchema,
+            CustomerDependentActionSchema,
             GenericGuidelinePreviouslyAppliedDetectorSchema,
             GenericNotPreviouslyAppliedGuidelineMatchesSchema,
             GenericPreviouslyAppliedGuidelineMatchesSchema,
@@ -363,6 +368,7 @@ async def container(
         container[CoherenceChecker] = Singleton(CoherenceChecker)
         container[GuidelineActionProposer] = Singleton(GuidelineActionProposer)
         container[GuidelineContinuousProposer] = Singleton(GuidelineContinuousProposer)
+        container[CustomerDependentActionDetector] = Singleton(CustomerDependentActionDetector)
 
         container[LocalToolService] = cast(
             LocalToolService,
