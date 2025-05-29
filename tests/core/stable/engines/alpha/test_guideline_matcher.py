@@ -2116,8 +2116,6 @@ def test_that_batch_processing_retries_on_key_error(
                         score=10,
                         rationale="Success after retry",
                         guideline_previously_applied=PreviouslyAppliedType.NO,
-                        guideline_is_continuous=False,
-                        should_reapply=False,
                     )
                     for g in self.guidelines
                 ],
@@ -2155,9 +2153,17 @@ def test_that_batch_processing_retries_on_key_error(
 
     context.container[GuidelineMatcher].strategy_resolver = FailingStrategyResolver()
 
+    session = context.sync_await(
+        context.container[SessionStore].create_session(
+            customer_id=customer.id,
+            agent_id=agent.id,
+        )
+    )
+
     guideline_matches = match_guidelines(
         context,
         agent,
+        session.id,
         customer,
         [],
     )
@@ -2196,6 +2202,13 @@ def test_that_batch_processing_fails_after_max_retries(
         async def resolve(self, guideline: Guideline) -> GuidelineMatchingStrategy:
             return AlwaysFailingStrategy()
 
+    session = context.sync_await(
+        context.container[SessionStore].create_session(
+            customer_id=customer.id,
+            agent_id=agent.id,
+        )
+    )
+
     create_guideline(
         context=context,
         condition="test condition",
@@ -2208,6 +2221,7 @@ def test_that_batch_processing_fails_after_max_retries(
         match_guidelines(
             context,
             agent,
+            session.id,
             customer,
             [],
         )
