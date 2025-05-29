@@ -364,7 +364,7 @@ OUTPUT FORMAT
 
         pathlib.Path("generic previously applied detector batch.txt").write_text(
             builder.build()
-        )  # TODO delete
+        )  # TODO End delete
 
         return builder
 
