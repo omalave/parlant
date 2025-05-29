@@ -159,7 +159,7 @@ def create_guideline_with_tools(
     return guideline
 
 
-def base_test_that_correct_guidelines_detect_as_previously_applied(
+def base_test_that_correct_guidelines_are_detected_as_previously_applied(
     context: ContextOfTest,
     agent: Agent,
     session_id: SessionId,
@@ -249,7 +249,7 @@ def test_that_correct_guidelines_detect_as_previously_applied(
     ]
     guidelines: list[str] = ["offer_two_pizza_for_one"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -278,7 +278,7 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_act
     ]
     guidelines: list[str] = ["register"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -289,7 +289,7 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_act
     )
 
 
-def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_has_partially_applied_but_behavioral(
+def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_has_partially_applied_but_behavioral(  # TODO Bar - not sure I understand this test
     context: ContextOfTest,
     agent: Agent,
     new_session: Session,
@@ -315,7 +315,7 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_has
     ]
     guidelines: list[str] = ["express_solidarity_and_discount"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -344,7 +344,7 @@ def test_that_correct_guideline_does_not_detect_as_previously_applied_when_guide
     ]
     guidelines: list[str] = ["discount_and_check_status"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -382,7 +382,7 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_act
     ]
     guidelines: list[str] = ["discount_and_check_status"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -411,7 +411,7 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_act
     ]
     guidelines: list[str] = ["late_so_discount", "cold_so_discount"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -441,7 +441,7 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_act
 
     guidelines: list[str] = ["link_when_asks_where_order"]
 
-    base_test_that_correct_guidelines_detect_as_previously_applied(
+    base_test_that_correct_guidelines_are_detected_as_previously_applied(
         context,
         agent,
         new_session.id,
@@ -450,3 +450,6 @@ def test_that_correct_guidelines_detect_as_previously_applied_when_guideline_act
         guidelines_target_names=guidelines,
         guidelines_names=guidelines,
     )
+
+
+# TODO add a test or two with partial fulfillment
