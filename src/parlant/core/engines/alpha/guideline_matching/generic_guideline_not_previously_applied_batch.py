@@ -183,12 +183,20 @@ You examine the applicability of each guideline under the assumption that the ac
 
 A guideline should be marked as applicable if it is relevant to the latest part of the conversation and in particular the most recent customer message. Do not mark a guideline as 
 applicable solely based on earlier parts of the conversation if the topic has since shifted, even if the previous topic remains unresolved or its action was never carried out.
+    For example:
+    If the customer first asks “How long does delivery take?” but later says “Also, can I use a discount code with this item?”, a delivery-related guideline will be no longer applicable, 
+    even if the agent never answered the delivery question.
 
-If the conversation moves from a broader issue to a related sub-issue (a related detail or follow-up within the same overall issue), you should still consider the guideline as applicable
-if it is relevant to the sub-issue, as it is part of the ongoing discussion.
+In particular, if in it's most recent part the conversation moves from a broader issue to a related sub-issue (a related detail or follow-up within the same overall issue), you should still 
+consider the guideline as applicable if it is relevant to the sub-issue, as it is part of the ongoing discussion.
+    For example:
+    If a customer asks “Can I return this jacket?” and then follows up with “What if I already took the tags off?”, a return policy guideline should remain applicable because the follow-up is 
+    part of the same issue.
 In contrast, if the conversation has clearly moved on to an entirely new topic, previous guidelines should not be marked as applicable.
 This ensures that applicability is tied to the current context, but still respects the continuity of a discussion when diving deeper into subtopics.
-
+    For example:
+    If a user starts by asking “Can I track my package?” and then says “Actually, I want to change my payment method,” a tracking-related guideline will be no longer applicable — the topic has 
+    clearly changed.
 
 The exact format of your response will be provided later in this prompt.
 
@@ -513,7 +521,7 @@ example_3_expected = GenericNotPreviouslyAppliedGuidelineMatchesSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="When the user is having a problem with login.",
             action="Help then identify the problem and solve it",
-            rationale="In the most recent message the customer mentions a problem to access their mail, which a sub issue of the login problem",
+            rationale="In the most recent message the customer mentions a problem to access their mail, which is a sub issue of the login problem",
             applies=True,
         ),
     ]
@@ -551,7 +559,8 @@ example_4_expected = GenericNotPreviouslyAppliedGuidelineMatchesSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
             condition="When the customer asks about how to return an item.",
             action="Mention both in-store and delivery service return options.",
-            rationale="In the most recent message the customer about what happens when they wore the item, which related to return an item",
+            rationale="In the most recent message the customer asks about what happens when they wore the item, which related to "
+            "previous topic of return an item",
             applies=True,
         ),
     ]
