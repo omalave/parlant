@@ -14,9 +14,9 @@ from parlant.core.engines.alpha.guideline_matching.guideline_match import (
     GuidelinePreviouslyApplied,
 )
 from parlant.core.engines.alpha.guideline_matching.guideline_matcher import (
-    GuidelineMatchingPreparationBatch,
-    GuidelineMatchingPreparationBatchResult,
-    GuidelineMatchingPreparationContext,
+    ResponseAnalysisBatch,
+    ResponseAnalysisBatchResult,
+    ReportAnalysisContext,
 )
 from parlant.core.engines.alpha.prompt_builder import BuiltInSection, PromptBuilder
 from parlant.core.guidelines import Guideline, GuidelineContent, GuidelineId
@@ -43,23 +43,23 @@ class GuidelinePreviouslyAppliedDetectionSchema(DefaultBaseModel):
     guideline_applied: bool
 
 
-class GenericGuidelineMatchingPreparationSchema(DefaultBaseModel):
+class GenericResponseAnalysisSchema(DefaultBaseModel):
     checks: Sequence[GuidelinePreviouslyAppliedDetectionSchema]
 
 
 @dataclass
-class GenericGuidelineMatchingPreparationShot(Shot):
+class GenericResponseAnalysisShot(Shot):
     interaction_events: Sequence[Event]
     guidelines: Sequence[GuidelineContent]
-    expected_result: GenericGuidelineMatchingPreparationSchema
+    expected_result: GenericResponseAnalysisSchema
 
 
-class GenericGuidelineMatchingPreparationBatch(GuidelineMatchingPreparationBatch):
+class GenericResponseAnalysisBatch(ResponseAnalysisBatch):
     def __init__(
         self,
         logger: Logger,
-        schematic_generator: SchematicGenerator[GenericGuidelineMatchingPreparationSchema],
-        context: GuidelineMatchingPreparationContext,
+        schematic_generator: SchematicGenerator[GenericResponseAnalysisSchema],
+        context: ReportAnalysisContext,
         guideline_matches: Sequence[GuidelineMatch],
     ) -> None:
         self._logger = logger
@@ -71,13 +71,13 @@ class GenericGuidelineMatchingPreparationBatch(GuidelineMatchingPreparationBatch
 
     async def process(
         self,
-    ) -> GuidelineMatchingPreparationBatchResult:
+    ) -> ResponseAnalysisBatchResult:
         all_guidelines = [m.guideline for m in self._guideline_matches]
 
         guideline_batches = list(chunked(all_guidelines, self._batch_size))
 
         with self._logger.operation(
-            f"GenericGuidelineMatchingPreparationBatch: {len(all_guidelines)} guidelines "
+            f"GenericResponseAnalysisBatch: {len(all_guidelines)} guidelines "
             f"in {len(guideline_batches)} batches (batch size={self._batch_size})"
         ):
             batch_tasks = [
@@ -110,7 +110,7 @@ class GenericGuidelineMatchingPreparationBatch(GuidelineMatchingPreparationBatch
                 )
             )
 
-            return GuidelineMatchingPreparationBatchResult(
+            return ResponseAnalysisBatchResult(
                 previously_applied_guidelines=all_applied_guidelines,
                 generation_info=generation_info,
             )
@@ -118,7 +118,7 @@ class GenericGuidelineMatchingPreparationBatch(GuidelineMatchingPreparationBatch
     async def _process_batch(
         self,
         batch: Sequence[Guideline],
-    ) -> GuidelineMatchingPreparationBatchResult:
+    ) -> ResponseAnalysisBatchResult:
         batch_guideline_ids = {g.id for g in batch}
 
         batch_guidelines = [
@@ -158,20 +158,20 @@ class GenericGuidelineMatchingPreparationBatch(GuidelineMatchingPreparationBatch
                     )
                 )
 
-        return GuidelineMatchingPreparationBatchResult(
+        return ResponseAnalysisBatchResult(
             previously_applied_guidelines=previously_applied_guidelines,
             generation_info=inference.info,
         )
 
-    async def shots(self) -> Sequence[GenericGuidelineMatchingPreparationShot]:
+    async def shots(self) -> Sequence[GenericResponseAnalysisShot]:
         return await shot_collection.list()
 
-    def _format_shots(self, shots: Sequence[GenericGuidelineMatchingPreparationShot]) -> str:
+    def _format_shots(self, shots: Sequence[GenericResponseAnalysisShot]) -> str:
         return "\n".join(
             f"Example #{i}: ###\n{self._format_shot(shot)}" for i, shot in enumerate(shots, start=1)
         )
 
-    def _format_shot(self, shot: GenericGuidelineMatchingPreparationShot) -> str:
+    def _format_shot(self, shot: GenericResponseAnalysisShot) -> str:
         def adapt_event(e: Event) -> JSONSerializable:
             source_map: dict[EventSource, str] = {
                 EventSource.CUSTOMER: "user",
@@ -237,7 +237,7 @@ Guidelines:
 
     def _build_prompt(
         self,
-        shots: Sequence[GenericGuidelineMatchingPreparationShot],
+        shots: Sequence[GenericResponseAnalysisShot],
         guidelines: dict[GuidelineId, Guideline],
     ) -> PromptBuilder:
         builder = PromptBuilder(on_build=lambda prompt: self._logger.debug(f"Prompt:\n{prompt}"))
@@ -408,7 +408,7 @@ example_1_guidelines = [
 ]
 
 
-example_1_expected = GenericGuidelineMatchingPreparationSchema(
+example_1_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -465,7 +465,7 @@ example_2_guidelines = [
     ),
 ]
 
-example_2_expected = GenericGuidelineMatchingPreparationSchema(
+example_2_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -523,7 +523,7 @@ example_3_guidelines = [
     ),
 ]
 
-example_3_expected = GenericGuidelineMatchingPreparationSchema(
+example_3_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -564,7 +564,7 @@ example_4_guidelines = [
     ),
 ]
 
-example_4_expected = GenericGuidelineMatchingPreparationSchema(
+example_4_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -603,7 +603,7 @@ example_5_guidelines = [
     ),
 ]
 
-example_5_expected = GenericGuidelineMatchingPreparationSchema(
+example_5_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -649,7 +649,7 @@ example_6_guidelines = [
     ),
 ]
 
-example_6_expected = GenericGuidelineMatchingPreparationSchema(
+example_6_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -687,7 +687,7 @@ example_7_guidelines = [
     ),
 ]
 
-example_7_expected = GenericGuidelineMatchingPreparationSchema(
+example_7_expected = GenericResponseAnalysisSchema(
     checks=[
         GuidelinePreviouslyAppliedDetectionSchema(
             guideline_id=GuidelineId("<example-id-for-few-shots--do-not-use-this-in-output>"),
@@ -711,44 +711,44 @@ example_7_expected = GenericGuidelineMatchingPreparationSchema(
     ]
 )
 
-_baseline_shots: Sequence[GenericGuidelineMatchingPreparationShot] = [
-    GenericGuidelineMatchingPreparationShot(
+_baseline_shots: Sequence[GenericResponseAnalysisShot] = [
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_1_events,
         guidelines=example_1_guidelines,
         expected_result=example_1_expected,
     ),
-    GenericGuidelineMatchingPreparationShot(
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_2_events,
         guidelines=example_2_guidelines,
         expected_result=example_2_expected,
     ),
-    GenericGuidelineMatchingPreparationShot(
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_3_events,
         guidelines=example_3_guidelines,
         expected_result=example_3_expected,
     ),
-    GenericGuidelineMatchingPreparationShot(
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_4_events,
         guidelines=example_4_guidelines,
         expected_result=example_4_expected,
     ),
-    GenericGuidelineMatchingPreparationShot(
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_5_events,
         guidelines=example_5_guidelines,
         expected_result=example_5_expected,
     ),
-    GenericGuidelineMatchingPreparationShot(
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_6_events,
         guidelines=example_6_guidelines,
         expected_result=example_6_expected,
     ),
-    GenericGuidelineMatchingPreparationShot(
+    GenericResponseAnalysisShot(
         description="",
         interaction_events=example_7_events,
         guidelines=example_7_guidelines,
@@ -756,4 +756,4 @@ _baseline_shots: Sequence[GenericGuidelineMatchingPreparationShot] = [
     ),
 ]
 
-shot_collection = ShotCollection[GenericGuidelineMatchingPreparationShot](_baseline_shots)
+shot_collection = ShotCollection[GenericResponseAnalysisShot](_baseline_shots)

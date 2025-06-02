@@ -39,7 +39,7 @@ from parlant.core.engines.alpha.guideline_matching import (
     generic_guideline_previously_applied_customer_dependent_batch,
 )
 from parlant.core.engines.alpha.guideline_matching import (
-    generic_guideline_matching_preparation_batch,
+    generic_response_analysis_batch,
 )
 from parlant.core.engines.alpha.guideline_matching.default_guideline_matching_strategy import (
     DefaultGuidelineMatchingStrategyResolver,
@@ -49,10 +49,10 @@ from parlant.core.engines.alpha.guideline_matching.generic_guideline_previously_
     GenericPreviouslyAppliedGuidelineMatching,
     GenericPreviouslyAppliedGuidelineGuidelineMatchingShot,
 )
-from parlant.core.engines.alpha.guideline_matching.generic_guideline_matching_preparation_batch import (
-    GenericGuidelineMatchingPreparationSchema,
-    GenericGuidelineMatchingPreparationBatch,
-    GenericGuidelineMatchingPreparationShot,
+from parlant.core.engines.alpha.guideline_matching.generic_response_analysis_batch import (
+    GenericResponseAnalysisSchema,
+    GenericResponseAnalysisBatch,
+    GenericResponseAnalysisShot,
 )
 from parlant.core.engines.alpha.guideline_matching.generic_guideline_not_previously_applied_batch import (
     GenericNotPreviouslyAppliedGuidelineMatchesSchema,
@@ -375,9 +375,7 @@ async def setup_container() -> AsyncIterator[Container]:
     web_socket_logger = WebSocketLogger(CORRELATOR, LogLevel.INFO)
     c[WebSocketLogger] = web_socket_logger
     c[Logger] = CompositeLogger([LOGGER, web_socket_logger])
-    c[ShotCollection[GenericGuidelineMatchingPreparationShot]] = (
-        generic_guideline_matching_preparation_batch.shot_collection
-    )
+    c[ShotCollection[GenericResponseAnalysisShot]] = generic_response_analysis_batch.shot_collection
     c[ShotCollection[GenericPreviouslyAppliedGuidelineGuidelineMatchingShot]] = (
         generic_guideline_previously_applied_batch.shot_collection
     )
@@ -588,7 +586,7 @@ async def initialize_container(
         )
 
     for schema in (
-        GenericGuidelineMatchingPreparationSchema,
+        GenericResponseAnalysisSchema,
         GenericPreviouslyAppliedGuidelineMatchesSchema,
         GenericNotPreviouslyAppliedGuidelineMatchesSchema,
         GenericPreviouslyAppliedCustomerDependentGuidelineMatchesSchema,
@@ -614,8 +612,8 @@ async def initialize_container(
         )
 
     try_define(
-        GenericGuidelineMatchingPreparationBatch,
-        Singleton(GenericGuidelineMatchingPreparationBatch),
+        GenericResponseAnalysisBatch,
+        Singleton(GenericResponseAnalysisBatch),
     )
 
     try_define(

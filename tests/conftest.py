@@ -43,7 +43,7 @@ from parlant.core.engines.alpha.guideline_matching import (
     generic_guideline_previously_applied_customer_dependent_batch,
 )
 from parlant.core.engines.alpha.guideline_matching import (
-    generic_guideline_matching_preparation_batch,
+    generic_response_analysis_batch,
 )
 from parlant.core.engines.alpha.guideline_matching.default_guideline_matching_strategy import (
     DefaultGuidelineMatchingStrategyResolver,
@@ -68,10 +68,10 @@ from parlant.core.engines.alpha.guideline_matching.generic_guideline_previously_
     GenericPreviouslyAppliedGuidelineGuidelineMatchingShot,
 )
 from parlant.core.engines.alpha.tool_calling import overlapping_tools_batch, single_tool_batch
-from parlant.core.engines.alpha.guideline_matching.generic_guideline_matching_preparation_batch import (
-    GenericGuidelineMatchingPreparationSchema,
-    GenericGuidelineMatchingPreparationBatch,
-    GenericGuidelineMatchingPreparationShot,
+from parlant.core.engines.alpha.guideline_matching.generic_response_analysis_batch import (
+    GenericResponseAnalysisSchema,
+    GenericResponseAnalysisBatch,
+    GenericResponseAnalysisShot,
 )
 from parlant.core.engines.alpha import message_generator
 from parlant.core.engines.alpha.hooks import EngineHooks
@@ -365,7 +365,7 @@ async def container(
             GuidelineActionPropositionSchema,
             GuidelineContinuousPropositionSchema,
             CustomerDependentActionSchema,
-            GenericGuidelineMatchingPreparationSchema,
+            GenericResponseAnalysisSchema,
         ):
             container[SchematicGenerator[generation_schema]] = await make_schematic_generator(  # type: ignore
                 container,
@@ -385,8 +385,8 @@ async def container(
         container[ShotCollection[GenericObservationalGuidelineMatchingShot]] = (
             generic_observational_batch.shot_collection
         )
-        container[ShotCollection[GenericGuidelineMatchingPreparationShot]] = (
-            generic_guideline_matching_preparation_batch.shot_collection
+        container[ShotCollection[GenericResponseAnalysisShot]] = (
+            generic_response_analysis_batch.shot_collection
         )
         container[ShotCollection[single_tool_batch.SingleToolBatchShot]] = (
             single_tool_batch.shot_collection
@@ -426,9 +426,7 @@ async def container(
         container[GenericPreviouslyAppliedCustomerDependentGuidelineMatching] = Singleton(
             GenericPreviouslyAppliedCustomerDependentGuidelineMatching
         )
-        container[GenericGuidelineMatchingPreparationBatch] = Singleton(
-            GenericGuidelineMatchingPreparationBatch
-        )
+        container[GenericResponseAnalysisBatch] = Singleton(GenericResponseAnalysisBatch)
         container[GuidelineMatcher] = Singleton(GuidelineMatcher)
         container[GuidelineEvaluator] = Singleton(GuidelineEvaluator)
 

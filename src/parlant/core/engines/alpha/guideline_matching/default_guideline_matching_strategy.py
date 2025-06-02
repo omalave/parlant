@@ -3,9 +3,9 @@ from typing import Mapping, Sequence
 from typing_extensions import override
 
 
-from parlant.core.engines.alpha.guideline_matching.generic_guideline_matching_preparation_batch import (
-    GenericGuidelineMatchingPreparationBatch,
-    GenericGuidelineMatchingPreparationSchema,
+from parlant.core.engines.alpha.guideline_matching.generic_response_analysis_batch import (
+    GenericResponseAnalysisBatch,
+    GenericResponseAnalysisSchema,
 )
 from parlant.core.engines.alpha.guideline_matching.generic_guideline_not_previously_applied_batch import (
     GenericNotPreviouslyAppliedGuidelineMatchesSchema,
@@ -27,8 +27,8 @@ from parlant.core.engines.alpha.guideline_matching.guideline_match import Guidel
 from parlant.core.engines.alpha.guideline_matching.guideline_matcher import (
     GuidelineMatchingBatch,
     GuidelineMatchingContext,
-    GuidelineMatchingPreparationBatch,
-    GuidelineMatchingPreparationContext,
+    ResponseAnalysisBatch,
+    ReportAnalysisContext,
     GuidelineMatchingStrategy,
     GuidelineMatchingStrategyResolver,
 )
@@ -54,9 +54,7 @@ class GenericGuidelineMatchingStrategy(GuidelineMatchingStrategy):
         not_previously_applied_guideline_schematic_generator: SchematicGenerator[
             GenericNotPreviouslyAppliedGuidelineMatchesSchema
         ],
-        matching_preparation_schematic_generator: SchematicGenerator[
-            GenericGuidelineMatchingPreparationSchema
-        ],
+        report_analysis_schematic_generator: SchematicGenerator[GenericResponseAnalysisSchema],
     ) -> None:
         self._logger = logger
         self._observational_guideline_schematic_generator = (
@@ -71,7 +69,7 @@ class GenericGuidelineMatchingStrategy(GuidelineMatchingStrategy):
         self._previously_applied_customer_dependent_guideline_schematic_generator = (
             previously_applied_customer_dependent_guideline_schematic_generator
         )
-        self._matching_preparation_schematic_generator = matching_preparation_schematic_generator
+        self._report_analysis_schematic_generator = report_analysis_schematic_generator
 
     @override
     async def create_matching_batches(
@@ -106,7 +104,9 @@ class GenericGuidelineMatchingStrategy(GuidelineMatchingStrategy):
             )
         if previously_applied_batch:
             guideline_batches.extend(
-                self._create_sub_batches_previously_applied_guideline(observational_batch, context)
+                self._create_sub_batches_previously_applied_guideline(
+                    previously_applied_batch, context
+                )
             )
         if previously_applied_customer_dependent_batch:
             guideline_batches.extend(
@@ -117,24 +117,24 @@ class GenericGuidelineMatchingStrategy(GuidelineMatchingStrategy):
         if not_previously_applied:
             guideline_batches.extend(
                 self._create_sub_batches_not_previously_applied_guideline(
-                    observational_batch, context
+                    not_previously_applied, context
                 )
             )
         return guideline_batches
 
     @override
-    async def create_matching_preparation_batches(
+    async def create_report_analysis_batches(
         self,
         guideline_matches: Sequence[GuidelineMatch],
-        context: GuidelineMatchingPreparationContext,
-    ) -> Sequence[GuidelineMatchingPreparationBatch]:
+        context: ReportAnalysisContext,
+    ) -> Sequence[ResponseAnalysisBatch]:
         if not guideline_matches:
             return []
 
         return [
-            GenericGuidelineMatchingPreparationBatch(
+            GenericResponseAnalysisBatch(
                 logger=self._logger,
-                schematic_generator=self._matching_preparation_schematic_generator,
+                schematic_generator=self._report_analysis_schematic_generator,
                 context=context,
                 guideline_matches=guideline_matches,
             )
@@ -177,7 +177,7 @@ class GenericGuidelineMatchingStrategy(GuidelineMatchingStrategy):
             context=context,
         )
 
-    async def _create_sub_batches_previously_applied_guideline(
+    def _create_sub_batches_previously_applied_guideline(
         self,
         guidelines: Sequence[Guideline],
         context: GuidelineMatchingContext,
@@ -268,7 +268,7 @@ class GenericGuidelineMatchingStrategy(GuidelineMatchingStrategy):
             end_offset = start_offset + batch_size
             batch = dict(guidelines_list[start_offset:end_offset])
             batches.append(
-                self._create_sub_batch_previously_applied_guideline(
+                self._create_sub_batch_not_previously_applied_guideline(
                     guidelines=list(batch.values()),
                     context=context,
                 )
@@ -313,10 +313,6 @@ class DefaultGuidelineMatchingStrategyResolver(GuidelineMatchingStrategyResolver
         self.guideline_overrides: dict[GuidelineId, GuidelineMatchingStrategy] = {}
         self.tag_overrides: dict[TagId, GuidelineMatchingStrategy] = {}
 
-        # Preparation strategy overrides
-        self.preparation_guideline_overrides: dict[GuidelineId, GuidelineMatchingStrategy] = {}
-        self.preparation_tag_overrides: dict[TagId, GuidelineMatchingStrategy] = {}
-
     @override
     async def resolve(self, guideline: Guideline) -> GuidelineMatchingStrategy:
         if override_strategy := self.guideline_overrides.get(guideline.id):
@@ -328,23 +324,6 @@ class DefaultGuidelineMatchingStrategyResolver(GuidelineMatchingStrategyResolver
             if len(tag_strategies) > 1:
                 self._logger.warning(
                     f"More than one tag-based strategy override found for guideline (id='{guideline.id}'). Choosing first strategy ({first_tag_strategy.__class__.__name__})"
-                )
-            return first_tag_strategy
-
-        return self._generic_strategy
-
-    async def resolve_preparation(self, guideline: Guideline) -> GuidelineMatchingStrategy:
-        if override_strategy := self.preparation_guideline_overrides.get(guideline.id):
-            return override_strategy
-
-        tag_strategies = [
-            s for tag_id, s in self.preparation_tag_overrides.items() if tag_id in guideline.tags
-        ]
-
-        if first_tag_strategy := next(iter(tag_strategies), None):
-            if len(tag_strategies) > 1:
-                self._logger.warning(
-                    f"More than one tag-based preparation strategy override found for guideline (id='{guideline.id}'). Choosing first strategy ({first_tag_strategy.__class__.__name__})"
                 )
             return first_tag_strategy
 

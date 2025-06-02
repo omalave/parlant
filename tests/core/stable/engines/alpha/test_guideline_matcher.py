@@ -35,18 +35,18 @@ from parlant.core.emissions import EmittedEvent
 from parlant.core.engines.alpha.guideline_matching.default_guideline_matching_strategy import (
     DefaultGuidelineMatchingStrategyResolver,
 )
-from parlant.core.engines.alpha.guideline_matching.generic_guideline_matching_preparation_batch import (
-    GenericGuidelineMatchingPreparationBatch,
-    GenericGuidelineMatchingPreparationSchema,
+from parlant.core.engines.alpha.guideline_matching.generic_response_analysis_batch import (
+    GenericResponseAnalysisBatch,
+    GenericResponseAnalysisSchema,
 )
 from parlant.core.engines.alpha.guideline_matching.guideline_matcher import (
     GuidelineMatcher,
     GuidelineMatchingBatch,
     GuidelineMatchingBatchResult,
     GuidelineMatchingContext,
-    GuidelineMatchingPreparationBatch,
-    GuidelineMatchingPreparationBatchResult,
-    GuidelineMatchingPreparationContext,
+    ResponseAnalysisBatch,
+    ResponseAnalysisBatchResult,
+    ReportAnalysisContext,
     GuidelineMatchingStrategy,
     GuidelineMatchingStrategyResolver,
 )
@@ -426,7 +426,7 @@ def update_previously_applied_guidelines(
     )
 
 
-def match_preparation(
+def analyze_response_and_update_session(
     context: ContextOfTest,
     agent: Agent,
     session: Session,
@@ -437,7 +437,7 @@ def match_preparation(
     previously_matched_guidelines: list[Guideline],
     interaction_history: list[Event],
 ) -> None:
-    matches_to_prepare = [
+    matches_to_analyze = [
         GuidelineMatch(
             guideline=g,
             rationale="",
@@ -448,31 +448,29 @@ def match_preparation(
         and not g.metadata.get("continuous", False)
     ]
 
-    interaction_history_for_preparation = (
+    interaction_history_for_analysis = (
         interaction_history[:-1] if len(interaction_history) > 1 else interaction_history
     )  # assume the last message is customer's
 
-    generic_matching_preparation_batch = GenericGuidelineMatchingPreparationBatch(
+    generic_response_analysis_batch = GenericResponseAnalysisBatch(
         logger=context.container[Logger],
-        schematic_generator=context.container[
-            SchematicGenerator[GenericGuidelineMatchingPreparationSchema]
-        ],
-        context=GuidelineMatchingPreparationContext(
+        schematic_generator=context.container[SchematicGenerator[GenericResponseAnalysisSchema]],
+        context=ReportAnalysisContext(
             agent=agent,
             session=session,
             customer=customer,
-            interaction_history=interaction_history_for_preparation,
+            interaction_history=interaction_history_for_analysis,
             context_variables=context_variables,
             terms=terms,
             staged_events=staged_events,
         ),
-        guideline_matches=matches_to_prepare,
+        guideline_matches=matches_to_analyze,
     )
 
     applied_guideline_ids = [
         g.guideline.id
         for g in (
-            context.sync_await(generic_matching_preparation_batch.process())
+            context.sync_await(generic_response_analysis_batch.process())
         ).previously_applied_guidelines
         if g.is_previously_applied
     ]
@@ -534,7 +532,7 @@ def base_test_that_correct_guidelines_are_matched(
         applied_guideline_ids=previously_applied_guidelines,
     )
 
-    match_preparation(
+    analyze_response_and_update_session(
         context=context,
         agent=agent,
         session=session,
@@ -1387,11 +1385,11 @@ def test_that_guideline_matching_strategies_can_be_overridden(
             ]
 
         @override
-        async def create_matching_preparation_batches(
+        async def create_report_analysis_batches(
             self,
             guideline_matches: Sequence[GuidelineMatch],
-            context: GuidelineMatchingPreparationContext,
-        ) -> Sequence[GuidelineMatchingPreparationBatch]:
+            context: ReportAnalysisContext,
+        ) -> Sequence[ResponseAnalysisBatch]:
             return []
 
     class ShortConditionStrategy(GuidelineMatchingStrategy):
@@ -1404,11 +1402,11 @@ def test_that_guideline_matching_strategies_can_be_overridden(
             return [SkipAllGuidelineBatch(guidelines=guidelines)]
 
         @override
-        async def create_matching_preparation_batches(
+        async def create_report_analysis_batches(
             self,
             guideline_matches: Sequence[GuidelineMatch],
-            context: GuidelineMatchingPreparationContext,
-        ) -> Sequence[GuidelineMatchingPreparationBatch]:
+            context: ReportAnalysisContext,
+        ) -> Sequence[ResponseAnalysisBatch]:
             return []
 
     class LenGuidelineMatchingStrategyResolver(GuidelineMatchingStrategyResolver):
@@ -1466,11 +1464,11 @@ def test_that_strategy_for_specific_guideline_can_be_overridden_in_default_strat
             return [ActivateEveryGuidelineBatch(guidelines=guidelines)]
 
         @override
-        async def create_matching_preparation_batches(
+        async def create_report_analysis_batches(
             self,
             guideline_matches: Sequence[GuidelineMatch],
-            context: GuidelineMatchingPreparationContext,
-        ) -> Sequence[GuidelineMatchingPreparationBatch]:
+            context: ReportAnalysisContext,
+        ) -> Sequence[ResponseAnalysisBatch]:
             return []
 
     guideline = create_guideline(context, "a customer asks for a drink", "check stock")
@@ -2142,7 +2140,7 @@ def test_that_both_observational_and_actionable_guidelines_are_matched_together(
     )
 
 
-def match_guideline_preparation(
+def analyze_response(
     context: ContextOfTest,
     agent: Agent,
     session: Session,
@@ -2152,7 +2150,7 @@ def match_guideline_preparation(
     terms: Sequence[Term] = [],
     staged_events: Sequence[EmittedEvent] = [],
 ) -> Sequence[GuidelinePreviouslyApplied]:
-    matches_to_prepare = [
+    matches_to_analyze = [
         GuidelineMatch(
             guideline=g,
             rationale="",
@@ -2163,8 +2161,8 @@ def match_guideline_preparation(
         and not g.metadata.get("continuous", False)
     ]
 
-    guideline_preparation_result = context.sync_await(
-        context.container[GuidelineMatcher].match_guideline_preparation(
+    response_analysis_result = context.sync_await(
+        context.container[GuidelineMatcher].analyze_response(
             agent=agent,
             session=session,
             customer=customer,
@@ -2172,14 +2170,14 @@ def match_guideline_preparation(
             interaction_history=interaction_history,
             terms=terms,
             staged_events=staged_events,
-            guideline_matches=matches_to_prepare,
+            guideline_matches=matches_to_analyze,
         )
     )
 
-    return list(guideline_preparation_result.previously_applied_guidelines)
+    return list(response_analysis_result.previously_applied_guidelines)
 
 
-def test_that_guideline_preparation_returns_empty_result_for_no_guidelines(
+def test_that_response_analysis_returns_empty_result_for_no_guidelines(
     context: ContextOfTest,
     agent: Agent,
     new_session: Session,
@@ -2193,8 +2191,8 @@ def test_that_guideline_preparation_returns_empty_result_for_no_guidelines(
         )
     ]
 
-    preparation_result = context.sync_await(
-        context.container[GuidelineMatcher].match_guideline_preparation(
+    response_analysis_result = context.sync_await(
+        context.container[GuidelineMatcher].analyze_response(
             agent=agent,
             session=new_session,
             customer=customer,
@@ -2206,14 +2204,14 @@ def test_that_guideline_preparation_returns_empty_result_for_no_guidelines(
         )
     )
 
-    assert preparation_result.total_duration >= 0.0
-    assert preparation_result.batch_count == 0
-    assert len(preparation_result.batch_generations) == 0
-    assert len(preparation_result.batches) == 0
-    assert len(preparation_result.previously_applied_guidelines) == 0
+    assert response_analysis_result.total_duration >= 0.0
+    assert response_analysis_result.batch_count == 0
+    assert len(response_analysis_result.batch_generations) == 0
+    assert len(response_analysis_result.batches) == 0
+    assert len(response_analysis_result.previously_applied_guidelines) == 0
 
 
-def test_that_guideline_preparation_processes_guideline(
+def test_that_response_analysis_processes_guideline(
     context: ContextOfTest,
     agent: Agent,
     new_session: Session,
@@ -2238,7 +2236,7 @@ def test_that_guideline_preparation_processes_guideline(
         ),
     ]
 
-    preparation_result = match_guideline_preparation(
+    response_analysis_result = analyze_response(
         context=context,
         agent=agent,
         session=new_session,
@@ -2249,16 +2247,16 @@ def test_that_guideline_preparation_processes_guideline(
         staged_events=[],
     )
 
-    assert preparation_result
+    assert response_analysis_result
 
 
-def test_that_guideline_preparation_strategy_can_be_overridden(
+def test_that_response_analysis_strategy_can_be_overridden(
     context: ContextOfTest,
     agent: Agent,
     new_session: Session,
     customer: Customer,
 ) -> None:
-    class ActivateGuidelineMatchingPreparationBatch(GuidelineMatchingPreparationBatch):
+    class ActivateResponseAnalysisBatch(ResponseAnalysisBatch):
         def __init__(
             self,
             guideline_matches: Sequence[GuidelineMatch],
@@ -2266,8 +2264,8 @@ def test_that_guideline_preparation_strategy_can_be_overridden(
             self.guideline_matches = guideline_matches
 
         @override
-        async def process(self) -> GuidelineMatchingPreparationBatchResult:
-            return GuidelineMatchingPreparationBatchResult(
+        async def process(self) -> ResponseAnalysisBatchResult:
+            return ResponseAnalysisBatchResult(
                 previously_applied_guidelines=[
                     GuidelinePreviouslyApplied(
                         guideline=m.guideline,
@@ -2297,12 +2295,12 @@ def test_that_guideline_preparation_strategy_can_be_overridden(
             return []
 
         @override
-        async def create_matching_preparation_batches(
+        async def create_report_analysis_batches(
             self,
             guideline_matches: Sequence[GuidelineMatch],
-            context: GuidelineMatchingPreparationContext,
-        ) -> Sequence[GuidelineMatchingPreparationBatch]:
-            return [ActivateGuidelineMatchingPreparationBatch(guideline_matches)]
+            context: ReportAnalysisContext,
+        ) -> Sequence[ResponseAnalysisBatch]:
+            return [ActivateResponseAnalysisBatch(guideline_matches)]
 
     class ActivateStrategyResolver(GuidelineMatchingStrategyResolver):
         @override
@@ -2325,7 +2323,7 @@ def test_that_guideline_preparation_strategy_can_be_overridden(
         ),
     ]
 
-    preparation_result = match_guideline_preparation(
+    response_analysis_result = analyze_response(
         context=context,
         agent=agent,
         session=new_session,
@@ -2336,8 +2334,8 @@ def test_that_guideline_preparation_strategy_can_be_overridden(
         staged_events=[],
     )
 
-    assert len(preparation_result) == 1
-    assert all(pa.is_previously_applied for pa in preparation_result)
+    assert len(response_analysis_result) == 1
+    assert all(pa.is_previously_applied for pa in response_analysis_result)
 
 
 def test_that_batch_processing_retries_on_key_error(
@@ -2380,19 +2378,19 @@ def test_that_batch_processing_retries_on_key_error(
                 ),
             )
 
-    class FailingPreparationBatch(GuidelineMatchingPreparationBatch):
+    class FailingResponseAnalysisBatch(ResponseAnalysisBatch):
         def __init__(self, guideline_matches: Sequence[GuidelineMatch], fail_count: int = 2):
             self.guideline_matches = guideline_matches
             self.fail_count = fail_count
             self.attempt_count = 0
 
         @override
-        async def process(self) -> GuidelineMatchingPreparationBatchResult:
+        async def process(self) -> ResponseAnalysisBatchResult:
             self.attempt_count += 1
             if self.attempt_count <= self.fail_count:
                 raise KeyError(f"Simulated failure on attempt {self.attempt_count}")
 
-            return GuidelineMatchingPreparationBatchResult(
+            return ResponseAnalysisBatchResult(
                 previously_applied_guidelines=[
                     GuidelinePreviouslyApplied(
                         guideline=m.guideline,
@@ -2427,13 +2425,13 @@ def test_that_batch_processing_retries_on_key_error(
             ]
 
         @override
-        async def create_matching_preparation_batches(
+        async def create_report_analysis_batches(
             self,
             guideline_matches: Sequence[GuidelineMatch],
-            context: GuidelineMatchingPreparationContext,
-        ) -> Sequence[GuidelineMatchingPreparationBatch]:
+            context: ReportAnalysisContext,
+        ) -> Sequence[ResponseAnalysisBatch]:
             return [
-                FailingPreparationBatch(
+                FailingResponseAnalysisBatch(
                     guideline_matches=guideline_matches,
                     fail_count=2,
                 )
@@ -2488,13 +2486,13 @@ def test_that_batch_processing_fails_after_max_retries(
             self.attempt_count += 1
             raise KeyError(f"Always fails - attempt {self.attempt_count}")
 
-    class AlwaysFailingPreparationBatch(GuidelineMatchingPreparationBatch):
+    class AlwaysFailingResponseAnalysisBatch(ResponseAnalysisBatch):
         def __init__(self, guideline_matches: Sequence[GuidelineMatch]):
             self.guideline_matches = guideline_matches
             self.attempt_count = 0
 
         @override
-        async def process(self) -> GuidelineMatchingPreparationBatchResult:
+        async def process(self) -> ResponseAnalysisBatchResult:
             self.attempt_count += 1
             raise KeyError(f"Always fails - attempt {self.attempt_count}")
 
@@ -2508,12 +2506,12 @@ def test_that_batch_processing_fails_after_max_retries(
             return [AlwaysFailingBatch(guidelines=guidelines)]
 
         @override
-        async def create_matching_preparation_batches(
+        async def create_report_analysis_batches(
             self,
             guideline_matches: Sequence[GuidelineMatch],
-            context: GuidelineMatchingPreparationContext,
-        ) -> Sequence[GuidelineMatchingPreparationBatch]:
-            return [AlwaysFailingPreparationBatch(guideline_matches=guideline_matches)]
+            context: ReportAnalysisContext,
+        ) -> Sequence[ResponseAnalysisBatch]:
+            return [AlwaysFailingResponseAnalysisBatch(guideline_matches=guideline_matches)]
 
     class AlwaysFailingStrategyResolver(GuidelineMatchingStrategyResolver):
         @override
